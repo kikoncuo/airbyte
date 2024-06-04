@@ -21,7 +21,6 @@ import io.airbyte.protocol.models.v0.DestinationSyncMode
 import io.airbyte.protocol.models.v0.StreamDescriptor
 import java.io.IOException
 import java.nio.charset.StandardCharsets
-import java.util.List
 import java.util.Optional
 import java.util.UUID
 import java.util.stream.IntStream
@@ -35,7 +34,7 @@ class RedshiftSuperLimitationTransformerTest {
     fun setup() {
         val column1 = redshiftSqlGenerator.buildColumnId("column1")
         val column2 = redshiftSqlGenerator.buildColumnId("column2")
-        val primaryKey = List.of(column1, column2)
+        val primaryKey = listOf(column1, column2)
         val columns = LinkedHashMap<ColumnId, AirbyteType>()
         // Generate columnIds from 3 to 1024 and add to columns map
         IntStream.range(3, 1025).forEach { i: Int ->
@@ -62,7 +61,7 @@ class RedshiftSuperLimitationTransformerTest {
                 0,
                 0
             )
-        val parsedCatalog = ParsedCatalog(List.of(streamConfig))
+        val parsedCatalog = ParsedCatalog(listOf(streamConfig))
         transformer = RedshiftSuperLimitationTransformer(parsedCatalog, "test_schema")
     }
 
@@ -107,7 +106,7 @@ class RedshiftSuperLimitationTransformerTest {
         val upstreamMeta =
             AirbyteRecordMessageMeta()
                 .withChanges(
-                    List.of(
+                    listOf(
                         AirbyteRecordMessageMetaChange()
                             .withField("upstream_field")
                             .withChange(AirbyteRecordMessageMetaChange.Change.NULLED)
@@ -128,17 +127,17 @@ class RedshiftSuperLimitationTransformerTest {
         )
         Assertions.assertEquals(2, transformed.second!!.changes.size)
         // Assert that transformation added the change
-        Assertions.assertEquals("$.column3", transformed.second!!.changes.first.field)
+        Assertions.assertEquals("$.column3", transformed.second!!.changes.first().field)
         Assertions.assertEquals(
             AirbyteRecordMessageMetaChange.Change.NULLED,
-            transformed.second!!.changes.first.change
+            transformed.second!!.changes.first().change
         )
         Assertions.assertEquals(
             AirbyteRecordMessageMetaChange.Reason.DESTINATION_FIELD_SIZE_LIMITATION,
-            transformed.second!!.changes.first.reason
+            transformed.second!!.changes.first().reason
         )
         // Assert that upstream changes are preserved (appended last)
-        Assertions.assertEquals("upstream_field", transformed.second!!.changes.last.field)
+        Assertions.assertEquals("upstream_field", transformed.second!!.changes.last().field)
     }
 
     @Test
@@ -150,7 +149,7 @@ class RedshiftSuperLimitationTransformerTest {
         val upstreamMeta =
             AirbyteRecordMessageMeta()
                 .withChanges(
-                    List.of(
+                    listOf(
                         AirbyteRecordMessageMetaChange()
                             .withField("upstream_field")
                             .withChange(AirbyteRecordMessageMetaChange.Change.NULLED)
@@ -175,17 +174,17 @@ class RedshiftSuperLimitationTransformerTest {
         )
         Assertions.assertEquals(2, transformed.second!!.changes.size)
         // Assert that transformation added the change
-        Assertions.assertEquals("all", transformed.second!!.changes.first.field)
+        Assertions.assertEquals("all", transformed.second!!.changes.first().field)
         Assertions.assertEquals(
             AirbyteRecordMessageMetaChange.Change.NULLED,
-            transformed.second!!.changes.first.change
+            transformed.second!!.changes.first().change
         )
         Assertions.assertEquals(
             AirbyteRecordMessageMetaChange.Reason.DESTINATION_RECORD_SIZE_LIMITATION,
-            transformed.second!!.changes.first.reason
+            transformed.second!!.changes.first().reason
         )
         // Assert that upstream changes are preserved (appended last)
-        Assertions.assertEquals("upstream_field", transformed.second!!.changes.last.field)
+        Assertions.assertEquals("upstream_field", transformed.second!!.changes.last().field)
     }
 
     @Test
@@ -197,7 +196,7 @@ class RedshiftSuperLimitationTransformerTest {
         val upstreamMeta =
             AirbyteRecordMessageMeta()
                 .withChanges(
-                    List.of(
+                    listOf(
                         AirbyteRecordMessageMetaChange()
                             .withField("upstream_field")
                             .withChange(AirbyteRecordMessageMetaChange.Change.NULLED)

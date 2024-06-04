@@ -16,7 +16,6 @@ import io.airbyte.protocol.models.v0.DestinationSyncMode
 import java.io.IOException
 import java.time.Instant
 import java.util.Arrays
-import java.util.List
 import java.util.Optional
 import java.util.Random
 import org.jooq.DSLContext
@@ -46,7 +45,7 @@ class RedshiftSqlGeneratorTest {
             )
         val id1 = redshiftSqlGenerator.buildColumnId("id1")
         val id2 = redshiftSqlGenerator.buildColumnId("id2")
-        val primaryKey = List.of(id1, id2)
+        val primaryKey = listOf(id1, id2)
         val cursor = redshiftSqlGenerator.buildColumnId("updated_at")
 
         val columns = LinkedHashMap<ColumnId, AirbyteType>()
@@ -125,7 +124,7 @@ class RedshiftSqlGeneratorTest {
                     )
                 }
                 .map { obj: String -> obj.trim { it <= ' ' } }
-                .filter { line: String -> !line.isEmpty() }
+                .filter { line: String -> line.isNotEmpty() }
                 .toList()
         Assertions.assertEquals(expectedSqlLines.size, generatedSqlLines.size)
         for (i in expectedSqlLines.indices) {
@@ -137,7 +136,7 @@ class RedshiftSqlGeneratorTest {
     fun test2000ColumnSql() {
         val id1 = redshiftSqlGenerator.buildColumnId("id1")
         val id2 = redshiftSqlGenerator.buildColumnId("id2")
-        val primaryKey = List.of(id1, id2)
+        val primaryKey = listOf(id1, id2)
         val cursor = redshiftSqlGenerator.buildColumnId("updated_at")
 
         val columns = LinkedHashMap<ColumnId, AirbyteType>()
