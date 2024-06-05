@@ -34,6 +34,7 @@ import io.airbyte.integrations.base.destination.typing_deduping.ParsedCatalog
 import io.airbyte.integrations.base.destination.typing_deduping.Sql
 import io.airbyte.integrations.base.destination.typing_deduping.StreamConfig
 import io.airbyte.integrations.base.destination.typing_deduping.migrators.Migration
+import io.airbyte.integrations.destination.snowflake.migrations.SnowflakeAbMetaAndGenIdMigration
 import io.airbyte.integrations.destination.snowflake.migrations.SnowflakeDV2Migration
 import io.airbyte.integrations.destination.snowflake.migrations.SnowflakeState
 import io.airbyte.integrations.destination.snowflake.operation.SnowflakeStagingClient
@@ -53,7 +54,6 @@ import javax.sql.DataSource
 import net.snowflake.client.core.SFSession
 import net.snowflake.client.core.SFStatement
 import net.snowflake.client.jdbc.SnowflakeSQLException
-import org.apache.commons.lang3.StringUtils
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -63,7 +63,7 @@ constructor(
     private val airbyteEnvironment: String,
     private val nameTransformer: NamingConventionTransformer = SnowflakeSQLNameTransformer(),
 ) : BaseConnector(), Destination {
-    private val destinationColumns = JavaBaseConstants.DestinationColumns.V2_WITHOUT_META
+    private val destinationColumns = JavaBaseConstants.DestinationColumns.V2_WITH_GENERATION
 
     override fun check(config: JsonNode): AirbyteConnectionStatus? {
         val dataSource = getDataSource(config)
@@ -190,12 +190,6 @@ constructor(
         AirbyteExceptionHandler.addAllStringsInConfigForDeinterpolation(config)
 
         val defaultNamespace = config["schema"].asText()
-        for (stream in catalog.streams) {
-            if (StringUtils.isEmpty(stream.stream.namespace)) {
-                stream.stream.namespace = defaultNamespace
-            }
-        }
-
         val retentionPeriodDays =
             getRetentionPeriodDays(
                 config[RETENTION_PERIOD_DAYS],
@@ -203,28 +197,27 @@ constructor(
         val sqlGenerator = SnowflakeSqlGenerator(retentionPeriodDays)
         val database = getDatabase(getDataSource(config))
         val databaseName = config[JdbcUtils.DATABASE_KEY].asText()
-        val rawTableSchemaName: String
-        val catalogParser: CatalogParser
-        if (getRawNamespaceOverride(RAW_SCHEMA_OVERRIDE).isPresent) {
-            rawTableSchemaName = getRawNamespaceOverride(RAW_SCHEMA_OVERRIDE).get()
-            catalogParser = CatalogParser(sqlGenerator, rawTableSchemaName)
-        } else {
-            rawTableSchemaName = JavaBaseConstants.DEFAULT_AIRBYTE_INTERNAL_NAMESPACE
-            catalogParser = CatalogParser(sqlGenerator)
-        }
+        val rawTableSchemaName: String =
+            if (getRawNamespaceOverride(RAW_SCHEMA_OVERRIDE).isPresent) {
+                getRawNamespaceOverride(RAW_SCHEMA_OVERRIDE).get()
+            } else {
+                JavaBaseConstants.DEFAULT_AIRBYTE_INTERNAL_NAMESPACE
+            }
+        val catalogParser = CatalogParser(sqlGenerator, defaultNamespace, rawTableSchemaName)
         val snowflakeDestinationHandler =
             SnowflakeDestinationHandler(databaseName, database, rawTableSchemaName)
         val parsedCatalog: ParsedCatalog = catalogParser.parseCatalog(catalog)
         val disableTypeDedupe =
             config.has(DISABLE_TYPE_DEDUPE) && config[DISABLE_TYPE_DEDUPE].asBoolean(false)
-        val migrations =
-            listOf<Migration<SnowflakeState>>(
+        val migrations: List<Migration<SnowflakeState>> =
+            listOf(
                 SnowflakeDV2Migration(
                     nameTransformer,
                     database,
                     databaseName,
                     sqlGenerator,
                 ),
+                SnowflakeAbMetaAndGenIdMigration(database),
             )
 
         val snowflakeStagingClient = SnowflakeStagingClient(database)
@@ -264,8 +257,7 @@ constructor(
             },
             onFlush = DefaultFlush(optimalFlushBatchSize, syncOperation),
             catalog = catalog,
-            bufferManager = BufferManager(snowflakeBufferMemoryLimit),
-            defaultNamespace = Optional.of(defaultNamespace),
+            bufferManager = BufferManager(defaultNamespace, snowflakeBufferMemoryLimit)
         )
     }
 
