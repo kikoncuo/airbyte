@@ -1002,7 +1002,7 @@ class IncrementalStream(Stream, ABC):
             is_last_slice = stream_slice == self.last_slice
         self._update_state(latest_cursor=latest_cursor, is_last_record=is_last_slice)
 
-    def get_updated_state(self, current_stream_state: MutableMapping[str, Any], latest_record: Mapping[str, Any]):
+    def _get_updated_state(self, current_stream_state: MutableMapping[str, Any], latest_record: Mapping[str, Any]):
         return self.state
 
     @property
@@ -2317,7 +2317,7 @@ class WebAnalyticsStream(CheckpointMixin, HttpSubStream, Stream):
         }
         return ResourceSchemaLoader("source_hubspot")._resolve_schema_references(raw_schema=raw_schema)
 
-    def get_updated_state(
+    def _get_updated_state(
         self, current_stream_state: MutableMapping[str, Any], latest_record: Mapping[str, Any]
     ) -> MutableMapping[str, Any]:
         """
