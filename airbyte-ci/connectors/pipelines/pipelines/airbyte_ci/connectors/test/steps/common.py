@@ -325,6 +325,10 @@ class AcceptanceTests(Step):
             content=container.file(self.REPORT_LOG_PATH),
             to_upload=True,
         )
+        # When the current connector is not certified we want to report the acceptance test results but not consider them in the overall status of the test pipeline
+        consider_result_in_overall_status = (
+            self.context.connector.metadata.get("supportLevel") == "certified" or self.context.ci_context == CIContext.MASTER
+        )
         return StepResult(
             step=self,
             status=self.get_step_status_from_exit_code(exit_code),
@@ -332,6 +336,7 @@ class AcceptanceTests(Step):
             stdout=stdout,
             output=container,
             artifacts=[report_log_artifact],
+            consider_in_overall_status=consider_result_in_overall_status,
         )
 
 
